@@ -1,0 +1,54 @@
+---
+title: 'R Notebook'
+output: html_notebook
+author: 'Wenceslao Arroyo-Machado'
+---
+
+This is the [R Markdown](http://rmarkdown.rstudio.com) Notebook created for the JCI analysis.
+
+```{r packages}
+source('functions.R')
+library(ggplot2)
+library(viridis)
+library(corrplot)
+```
+
+JCR data was retrieved through several files. They are all combined into a big one.
+
+```{r read_jcr}
+df <- read_jcr('data/files/')
+```
+
+```{r}
+summary(df)
+```
+
+
+```{r}
+
+jcr_cor <- df[,c('2020 JIF', '2020 JCI', '5 Year JIF', 'Immediacy Index', 'Eigenfactor', 'Total Citations', 'Article Influence Score')]
+
+jcr_corp <- cor.mtest(jcr_cor, conf.level = 0.995)
+jcr_cor <- cor(jcr_cor, method = 'pearson', use='complete.obs')
+
+
+corrplot(jcr_cor, p.mat = jcr_corp$p, insig ='blank', method = 'square', order = 'FPC', type = 'lower', tl.col="black", tl.srt=45,  addCoef.col="black", diag = FALSE, col=viridis::viridis(100))
+```
+
+```{r cor, dpi = 100, fig.retina = 2,  fig.height = 7, fig.width=6}
+summary(df)
+
+a<-biblio_cor(df, '2020 JIF', '2020 JCI')
+
+
+ggplot2::ggplot(data=a[which(!is.na(a$Correlation)),], aes(x='', y=Journals))+
+  geom_boxplot(outlier.shape = NA, width = 0.8) +
+  geom_jitter()+
+  geom_hline(yintercept =  25)+
+  scale_color_viridis()+
+  theme_minimal()
+
+
+ggpairs(df[which(df$Category=='ECONOMICS - SSCI'),c(5,6,8,10:14)])
+
+```
