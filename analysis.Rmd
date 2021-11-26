@@ -30,8 +30,9 @@ jcr_cor <- df[,c('2020 JIF', '2020 JCI', '5 Year JIF', 'Immediacy Index', 'Eigen
 
 jcr_corp <- cor.mtest(jcr_cor, conf.level = 0.995)
 jcr_cor <- cor(jcr_cor, method = 'pearson', use='complete.obs')
+```
 
-
+```{r}
 corrplot(jcr_cor, p.mat = jcr_corp$p, insig ='blank', method = 'square', order = 'FPC', type = 'lower', tl.col="black", tl.srt=45,  addCoef.col="black", diag = FALSE, col=viridis::viridis(100))
 ```
 
@@ -48,6 +49,35 @@ ggplot2::ggplot(data=a[which(!is.na(a$Correlation)),], aes(x='', y=Journals))+
   scale_color_viridis()+
   theme_minimal()
 
+
+ggpairs(df[which(df$Category=='ECONOMICS - SSCI'),c(5,6,8,10:14)])
+
+```
+
+
+
+```{r cor, dpi = 200, fig.retina = 2,  fig.height = 4, fig.width=3.5}
+summary(df)
+
+
+
+df_cor <- data.frame()
+for(x in c('2020 JIF', '5 Year JIF', 'Immediacy Index', 'Eigenfactor', 'Total Citations', 'Article Influence Score')){
+  aux <-biblio_cor(df, x, '2020 JCI')
+  aux$Indicator <- x
+  df_cor <- rbind.data.frame(df_cor, aux, stringsAsFactors = FALSE)
+}
+
+df_cor <- df_cor[which(!is.na(df_cor$Correlation)),]
+df_cor <- df_cor[which(df_cor$Journals>25),]
+
+ggplot2::ggplot(data=df_cor, aes(x='', y=Correlation))+
+  geom_boxplot(outlier.shape = NA, width = 0.8) +
+  geom_jitter(aes(color=Correlation), shape=19, stroke=0, alpha=.7)+
+  scale_x_discrete(breaks = NULL) + 
+  scale_color_viridis()+
+  theme_light()+
+  facet_wrap(~Indicator)
 
 ggpairs(df[which(df$Category=='ECONOMICS - SSCI'),c(5,6,8,10:14)])
 
