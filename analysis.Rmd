@@ -39,10 +39,13 @@ corrplot(jcr_cor, p.mat = jcr_corp$p, insig ='blank', method = 'square', order =
 ```{r cor, dpi = 100, fig.retina = 2,  fig.height = 7, fig.width=6}
 summary(df)
 
-a<-biblio_cor(df, '2020 JIF', '2020 JCI')
+jif_jci <- biblio_cor(df, '2020 JIF', '2020 JCI')
+jif_jci$Sign <- jif_jci$p<0.01
+jif_jci <- jif_jci[which(!is.na(jif_jci$Correlation)),]
+jif_jci <- jif_jci[which(jif_jci$Journals>25),]
 
 
-ggplot2::ggplot(data=a[which(!is.na(a$Correlation)),], aes(x='', y=Journals))+
+ggplot2::ggplot(data=jif_jci[which(!is.na(jif_jci$Correlation)),], aes(x='', y=Journals))+
   geom_boxplot(outlier.shape = NA, width = 0.8) +
   geom_jitter()+
   geom_hline(yintercept =  25)+
@@ -52,6 +55,9 @@ ggplot2::ggplot(data=a[which(!is.na(a$Correlation)),], aes(x='', y=Journals))+
 
 ggpairs(df[which(df$Category=='ECONOMICS - SSCI'),c(5,6,8,10:14)])
 
+
+jif_jci <- jif_jci[which(jif_jci$Journals>25),]
+cor.mtest(df[1:10, c('2020 JIF','2020 JCI')])
 ```
 
 
@@ -80,5 +86,122 @@ ggplot2::ggplot(data=df_cor, aes(y=Correlation, x=DB, group=DB))+
   facet_wrap(~Indicator)
 
 ggpairs(df[which(df$Category=='ECONOMICS - SSCI'),c(5,6,8,10:14)])
+
+```
+
+
+```{r a, dpi = 200, fig.retina = 2,  fig.height = 6, fig.width=7}
+df_cor <- df_cor[which(!is.na(df_cor$Correlation)),]
+df_cor <- df_cor[which(df_cor$Journals>25),]
+
+ggplot2::ggplot(data=df_cor[which(df_cor$Indicator %in% c('2020 JIF', '5 Year JIF')),], aes(y=Correlation, x=DB, group=DB))+
+  geom_boxplot(outlier.shape = NA, width = 0.8) +
+  geom_jitter(aes(color=Correlation), stroke=0, alpha=.7)+
+  scale_color_viridis()+
+  theme_light()+
+  theme(panel.grid.major.x = element_blank())+
+  facet_wrap(~Indicator)
+
+ggplot2::ggplot(data=df_cor[which((df_cor$Indicator %in% c('2020 JIF', '5 Year JIF')) & (df_cor$DB %in% c('SSCI', 'SCIE'))),], aes(y=Correlation, x=DB, group=DB))+
+  geom_boxplot(outlier.shape = NA, width = 0.8) +
+  geom_jitter(aes(color=Correlation, size=Docs), stroke=0, alpha=.6)+
+  scale_color_viridis()+
+  scale_size_continuous(range = c(1,5), breaks = c(0, 25000,50000, 100000, 125000, 150000, 200000))+
+  theme_light()+
+  theme(panel.grid.major.x = element_blank())+
+  facet_wrap(~Indicator)
+
+ggplot2::ggplot(data=df_cor[which(!(df_cor$Indicator %in% c('2020 JIF', '5 Year JIF'))),], aes(y=Correlation, x=DB, group=DB))+
+  geom_boxplot(outlier.shape = NA, width = 0.8) +
+  geom_jitter(aes(color=Correlation, size=Docs), shape=16, stroke=0, alpha=.5)+
+  scale_color_viridis()+
+  scale_size_continuous(range = c(1,5), breaks = c(0, 25000,50000, 100000, 125000, 150000, 200000))+
+  theme_light()+
+  theme(panel.grid.major.x = element_blank())+
+  facet_wrap(~Indicator)
+```
+
+
+```{r}
+
+df_den <- data.frame()
+
+for(x in c('2020 JIF', '5 Year JIF', 'Immediacy Index', 'Eigenfactor', 'Total Citations', 'Article Influence Score')){
+  aux <-df[,c('Category','Cat','DB',x)]
+  names(aux)[4] <- 'Value'
+  aux$Indicator <- x
+  df_den <- rbind.data.frame(df_den, aux, stringsAsFactors = FALSE)
+}
+
+
+
+ggplot2::ggplot(data=df_den[which(df_den$DB == 'SSCI'),], aes(x=Value, fill=Indicator))+
+  geom_histogram(bins=10)+
+  theme_light()+
+  facet_wrap(~Indicator, scales = 'free')+
+  theme(legend.position = 'none')
+
+ggplot2::ggplot(data=df_den[which(df_den$DB == 'SSCI'),], aes(x=Value, fill=Indicator))+
+  geom_density(color=NA)+
+  theme_light()+
+  facet_wrap(~Indicator, scales = 'free')+
+  theme(legend.position = 'none')
+
+qqnorm(as.numeric(df_den[which(df_den$DB == 'SSCI' & df_den$Indicator == '2020 JIF'),]$Value))
+
+```
+
+
+```{r GINI, dpi = 200, fig.retina = 2,  fig.height = 5, fig.width=9}
+library(descr)
+x <- as.numeric(df_den[which(df_den$DB == 'SSCI' & df_den$Indicator == '2020 JIF'),]$Value)
+tab = as.data.frame(freq(ordered(x), plot = FALSE))
+CumFreq = cumsum(tab[-dim(tab)[1],]$Frequency)
+tab$CumFreq = c(CumFreq, NA)
+tab
+
+
+df_den <- data.frame()
+
+for(x in c('2020 JIF', '5 Year JIF', 'Immediacy Index', 'Eigenfactor', 'Total Citations', 'Article Influence Score')){
+  aux <-df[,c('Category','Cat','DB',x)]
+  names(aux)[4] <- 'Value'
+  aux <- aux[which(!is.na(aux$Value)),]
+  
+  aux2 <- data.frame(lor=Lc(as.numeric(aux$Value))$p, stringsAsFactors = FALSE)
+  aux2$Indicator <- x
+  df_den <- rbind.data.frame(df_den, aux2, stringsAsFactors = FALSE)
+}
+
+ggplot(tab, aes(x=Frequency, y=`Cum Percent`))+
+  geom_line()
+
+library(ineq)
+plot(Lc(as.numeric(df_den[which(df_den$DB == 'SSCI' & df_den$Indicator == '2020 JIF'),]$Value)))
+
+
+
+
+df_den <- data.frame()
+
+for(x in c('2020 JCI','2020 JIF', '5 Year JIF', 'Immediacy Index', 'Eigenfactor', 'Total Citations', 'Article Influence Score')){
+  aux <-df[,c('Category','Cat','DB',x)]
+  names(aux)[4] <- 'Value'
+  aux$Indicator <- x
+  df_den <- rbind.data.frame(df_den, aux, stringsAsFactors = FALSE)
+}
+
+
+library(gglorenz)
+
+ggplot(df_den, aes(x=Value, color=Indicator)) +
+    stat_lorenz(desc = FALSE, alpha=.7, size=1) +
+    #coord_fixed() +
+    geom_abline(size=1) +
+    theme_light() +
+  theme(panel.grid = element_blank(),
+        legend.position="bottom", legend.box = "horizontal")+
+  labs(y='Lorenz curve')
+
 
 ```
