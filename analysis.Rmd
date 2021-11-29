@@ -25,16 +25,16 @@ summary(df)
 
 
 ```{r}
+jcr_cor <- df[,c('Journal name', 'ISSN', 'eISSN','2020 JIF', '2020 JCI', '5 Year JIF', 'Immediacy Index', 'Eigenfactor', 'Total Citations', 'Article Influence Score')]
+jcr_cor <- unique(jcr_cor)
 
-jcr_cor <- df[,c('2020 JIF', '2020 JCI', '5 Year JIF', 'Immediacy Index', 'Eigenfactor', 'Total Citations', 'Article Influence Score')]
+jcr_corp <- cor.mtest(jcr_cor[,4:10], conf.level = 0.995)
+jcr_cor <- cor(jcr_cor[,4:10], method = 'pearson', use='complete.obs')
 
-jcr_corp <- cor.mtest(jcr_cor, conf.level = 0.995)
-jcr_cor <- cor(jcr_cor, method = 'pearson', use='complete.obs')
-```
-
-```{r}
 corrplot(jcr_cor, p.mat = jcr_corp$p, insig ='blank', method = 'square', order = 'FPC', type = 'lower', tl.col="black", tl.srt=45,  addCoef.col="black", diag = FALSE, col=viridis::viridis(100))
 ```
+
+
 
 ```{r cor, dpi = 100, fig.retina = 2,  fig.height = 7, fig.width=6}
 summary(df)
