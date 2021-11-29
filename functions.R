@@ -26,6 +26,8 @@ read_jcr <- function(path){
     }
   }
   
+  df <- as.data.frame(df)
+  
   # Minor errors with commas and %
   df$`Total Citations` <- as.integer(gsub(',', '', df$`Total Citations`))
   df$`% of OA Gold` <- as.numeric(gsub('%', '', df$`% of OA Gold`))
@@ -33,12 +35,17 @@ read_jcr <- function(path){
   df$`% of Articles in Citable items` <- as.numeric(gsub('%', '', df$`% of Articles in Citable items`))
   df$`Citable Items` <- as.integer(gsub(',', '', df$`Citable Items`))
   
+  
   # Separate journals by categories
   df <- separate_rows(df, Category, sep = '; ', convert = FALSE)
   
   # Create columns for the specific category and index
   df$DB <- gsub('.* - ', '', df$Category)
   df$Cat <- gsub(' -.*', '', df$Category)
+  
+  # AHCI categories are fixed
+  df[which(df$DB == 'AHCI'), c('2020 JIF', '5 Year JIF', 'JIF Quartile')] <- NA
+  
   
   df <- unique(df)
   
