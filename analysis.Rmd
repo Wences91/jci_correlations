@@ -31,7 +31,7 @@ jcr_cor <- unique(jcr_cor)
 jcr_corp <- cor.mtest(jcr_cor[,4:10], conf.level = 0.995)
 jcr_cor <- cor(jcr_cor[,4:10], method = 'pearson', use='complete.obs')
 
-corrplot(jcr_cor, p.mat = jcr_corp$p, insig ='blank', method = 'square', order = 'FPC', type = 'lower', tl.col="black", tl.srt=45,  addCoef.col="black", diag = FALSE, col=viridis::viridis(100))
+corrplot(jcr_cor, p.mat = jcr_corp$p, insig ='blank', method = 'square', order = 'FPC', type = 'lower', tl.col='black', tl.srt=45,  addCoef.col='black', diag = TRUE, col=viridis::viridis(100))
 ```
 
 
@@ -65,7 +65,8 @@ cor.mtest(df[1:10, c('2020 JIF','2020 JCI')])
 ```{r cor, dpi = 200, fig.retina = 2,  fig.height = 4, fig.width=3.5}
 summary(df)
 
-
+esi_categories <- read.csv2('data/final_map.csv', stringsAsFactors = FALSE)
+esi_categories$WC <- toupper(esi_categories$WC)
 
 df_cor <- data.frame()
 for(x in c('2020 JIF', '5 Year JIF', 'Immediacy Index', 'Eigenfactor', 'Total Citations', 'Article Influence Score')){
@@ -73,6 +74,13 @@ for(x in c('2020 JIF', '5 Year JIF', 'Immediacy Index', 'Eigenfactor', 'Total Ci
   aux$Indicator <- x
   df_cor <- rbind.data.frame(df_cor, aux, stringsAsFactors = FALSE)
 }
+esi_categories[which(esi_categories$WC == "WOMEN'S STUDIES"),'WC'] <- 'WOMENS STUDIES'
+df_cor <- df_cor[which(!(is.na(df_cor$Cat))),]
+
+all(df_cor$Cat %in% esi_categories$WC)
+
+df_cor <- dplyr::inner_join(df_cor, esi_categories[,c('WC', 'ESI')], by=c('Cat'='WC'))
+write.table(df_cor, 'data/correlations_esi.tsv', sep='\t', row.names = FALSE)
 
 df_cor <- df_cor[which(!is.na(df_cor$Correlation)),]
 df_cor <- df_cor[which(df_cor$Journals>25),]
@@ -86,38 +94,82 @@ ggplot2::ggplot(data=df_cor, aes(y=Correlation, x=DB, group=DB))+
   facet_wrap(~Indicator)
 
 ggpairs(df[which(df$Category=='ECONOMICS - SSCI'),c(5,6,8,10:14)])
-
+print('p)
 ```
 
 
-```{r a, dpi = 200, fig.retina = 2,  fig.height = 6, fig.width=7}
+```{r correlation_plots, dpi = 200, fig.retina = 2,  fig.height = 2, fig.width=3}
+df_cor <- data.frame()
+for(x in c('2020 JIF', '5 Year JIF', 'Immediacy Index', 'Eigenfactor', 'Total Citations', 'Article Influence Score')){
+  aux <-biblio_cor(df, x, '2020 JCI')
+  aux$Indicator <- x
+  df_cor <- rbind.data.frame(df_cor, aux, stringsAsFactors = FALSE)
+}
+
 df_cor <- df_cor[which(!is.na(df_cor$Correlation)),]
 df_cor <- df_cor[which(df_cor$Journals>25),]
 
-ggplot2::ggplot(data=df_cor[which(df_cor$Indicator %in% c('2020 JIF', '5 Year JIF')),], aes(y=Correlation, x=DB, group=DB))+
-  geom_boxplot(outlier.shape = NA, width = 0.8) +
-  geom_jitter(aes(color=Correlation), stroke=0, alpha=.7)+
-  scale_color_viridis()+
-  theme_light()+
-  theme(panel.grid.major.x = element_blank())+
-  facet_wrap(~Indicator)
+```
 
-ggplot2::ggplot(data=df_cor[which((df_cor$Indicator %in% c('2020 JIF', '5 Year JIF')) & (df_cor$DB %in% c('SSCI', 'SCIE'))),], aes(y=Correlation, x=DB, group=DB))+
+```{r , dpi = 200, fig.retina = 2,  fig.height = 2.5, fig.width=3.5}
+
+jci_jif <- df_cor[which((df_cor$Indicator %in% c('2020 JIF', '5 Year JIF')) & (df_cor$DB %in% c('SSCI', 'SCIE'))),]
+
+jci_jif[which(jci_jif$DB == 'SSCI'),'DB'] <- 'JCR - Social Science ed.'
+jci_jif[which(jci_jif$DB == 'SCIE'),'DB'] <- 'JCR - Science ed.'
+
+jci_jif[which(jci_jif$Indicator == '2020 JIF'),'Indicator'] <- 'Journal Impact Factor'
+jci_jif[which(jci_jif$Indicator == '5 Year JIF'),'Indicator'] <- '5 Year Journal Impact Factor'
+
+ggplot2::ggplot(data=jci_jif, aes(y=Correlation, x=DB, group=DB))+
   geom_boxplot(outlier.shape = NA, width = 0.8) +
-  geom_jitter(aes(color=Correlation, size=Docs), stroke=0, alpha=.6)+
-  scale_color_viridis()+
+  geom_jitter(aes(fill=Correlation, size=Docs), shape=21, color='black', stroke=.5, alpha=.6)+
+  scale_fill_gradient(low = 'white', high = '#eb2701', na.value = NA)+
+  #scale_color_viridis()+
   scale_size_continuous(range = c(1,5), breaks = c(0, 25000,50000, 100000, 125000, 150000, 200000))+
   theme_light()+
   theme(panel.grid.major.x = element_blank())+
+  theme(panel.grid = element_blank(),
+        text=element_text(family='Arial', size=12.5, color='black'),
+        axis.text = element_text(color='black', size=11),
+        axis.ticks = element_line(color='black'),
+        legend.position="bottom",
+        panel.border = element_rect(colour = "black"),
+        strip.background = element_rect(colour="black",
+                                        fill="black"),
+        strip.text = element_text(size=14) )+
+  guides(fill = guide_colorbar( label.position = "bottom",
+                               title.position = "left", title.vjust = 0.85)) +
+  labs(x='')+
   facet_wrap(~Indicator)
+```
+```{r , dpi = 200, fig.retina = 2,  fig.height = 3, fig.width=3.5}
+ot_indicators <- df_cor[which(!(df_cor$Indicator %in% c('2020 JIF', '5 Year JIF'))),]
 
-ggplot2::ggplot(data=df_cor[which(!(df_cor$Indicator %in% c('2020 JIF', '5 Year JIF'))),], aes(y=Correlation, x=DB, group=DB))+
+ot_indicators[which(ot_indicators$DB == 'SSCI'),'DB'] <- 'Social\nScience ed.'
+ot_indicators[which(ot_indicators$DB == 'SCIE'),'DB'] <- 'Science ed.'
+ot_indicators[which(ot_indicators$DB == 'AHCI'),'DB'] <- 'Arts &\nHumanities ed.'
+ot_indicators[which(ot_indicators$DB == 'ESCI'),'DB'] <- 'Emerging\nSources'
+
+ggplot2::ggplot(data=ot_indicators, aes(y=Correlation, x=DB, group=DB))+
   geom_boxplot(outlier.shape = NA, width = 0.8) +
-  geom_jitter(aes(color=Correlation, size=Docs), shape=16, stroke=0, alpha=.5)+
-  scale_color_viridis()+
-  scale_size_continuous(range = c(1,5), breaks = c(0, 25000,50000, 100000, 125000, 150000, 200000))+
+  geom_jitter(aes(fill=Correlation, size=Docs), shape=21, color='black', stroke=.5, alpha=.6)+
+  scale_fill_gradient(low = 'white', high = '#eb2701', na.value = NA)+
+  scale_size_continuous(range = c(0.1,3.5), breaks = c(0, 25000,50000, 100000, 125000, 150000, 200000))+
   theme_light()+
   theme(panel.grid.major.x = element_blank())+
+  theme(panel.grid = element_blank(),
+        text=element_text(family='Arial', size=12.5, color='black'),
+        axis.text = element_text(color='black', size=10.5),
+        axis.ticks = element_line(color='black'),
+        legend.position="bottom",
+        panel.border = element_rect(colour = "black"),
+        strip.background = element_rect(colour="black",
+                                        fill="black"),
+        strip.text = element_text(size=14))+
+  guides(fill = guide_colorbar( label.position = "bottom",
+                               title.position = "left", title.vjust = 0.85)) +
+  labs(x='')+
   facet_wrap(~Indicator)
 ```
 
