@@ -11,6 +11,7 @@ source('functions.R')
 library(ggplot2)
 library(viridis)
 library(corrplot)
+library(dplyr)
 ```
 
 JCR data was retrieved through several files. They are all combined into a big one.
@@ -94,7 +95,6 @@ ggplot2::ggplot(data=df_cor, aes(y=Correlation, x=DB, group=DB))+
   facet_wrap(~Indicator)
 
 ggpairs(df[which(df$Category=='ECONOMICS - SSCI'),c(5,6,8,10:14)])
-print('p)
 ```
 
 
@@ -200,6 +200,36 @@ ggplot2::ggplot(data=df_den[which(df_den$DB == 'SSCI'),], aes(x=Value, fill=Indi
   theme(legend.position = 'none')
 
 qqnorm(as.numeric(df_den[which(df_den$DB == 'SSCI' & df_den$Indicator == '2020 JIF'),]$Value))
+
+```
+
+```{r}
+library(dplyr)
+top_jci_jif <- df_cor[which((df_cor$Indicator == c('2020 JIF')) & (df_cor$DB %in% c('SSCI', 'SCIE'))),]
+
+top_jci_jif <- top_jci_jif  %>% 
+  arrange(desc(Correlation)) %>% 
+  group_by(DB) %>% slice(1:10)
+
+
+top_jci_jif <- as.data.frame(top_jci_jif)
+top_jci_jif$n <- 1:20
+top_jci_jif[which(top_jci_jif$DB=='SCIE'),'Cat'] <- paste(' ', top_jci_jif[which(top_jci_jif$DB=='SCIE'),'Cat'])
+
+top_jci_jif <- top_jci_jif %>% 
+  arrange(DB, Correlation) %>%
+  mutate(Cat = factor(Cat, levels = Cat))
+
+ggplot(top_jci_jif, aes(x = Cat, y = Correlation)) +
+  geom_segment(
+    aes(x = Cat, xend = Cat, y = 0.9, yend = Correlation), 
+    color = "black"
+    ) + 
+  geom_point(aes(color = DB), size = 4) +
+  scale_color_viridis_d() +
+  theme_pubclean() +
+  coord_flip() +
+  rotate_x_text(45)
 
 ```
 
