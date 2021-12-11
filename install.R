@@ -1,0 +1,6 @@
+install.packages('reldist')
+install.packages('gglorenz')
+install.packages('ggplot2')
+install.packages('GGally')
+install.packages('dplyr')
+install.packages('ggnewscale')
