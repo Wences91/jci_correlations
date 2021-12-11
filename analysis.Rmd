@@ -1,289 +1,225 @@
 ---
-title: 'R Notebook'
-output: html_notebook
+title: 'Is there a need for a new journal metric? Correlations between JCR Impact Factor
+  metrics and the Journal Citation Indicator - JCI'
 author: 'Wenceslao Arroyo-Machado'
+date: '12 December, 2021'
+output:
+  html_notebook:
+    toc: yes
 ---
 
 This is the [R Markdown](http://rmarkdown.rstudio.com) Notebook created for the JCI analysis.
-
-```{r packages}
+```{r packages, warning=FALSE, message=FALSE}
 source('functions.R')
+library(reldist)
+library(gglorenz)
 library(ggplot2)
-library(viridis)
-library(corrplot)
+library(GGally)
 library(dplyr)
+library(ggnewscale)
+
+set.seed(13)
 ```
 
-JCR data was retrieved through several files. They are all combined into a big one.
-
+First line only can be executed if you have downloaded data from JCR in multiple files, otherwise, use the second line which includes the anonymized JCR data.
 ```{r read_jcr}
-df <- read_jcr('data/files/')
+#df <- read_jcr('data/files/')
+df <- read.delim('data/jcr.tsv', stringsAsFactors=FALSE, check.names=FALSE)
 ```
 
-```{r}
-summary(df)
+Some descriptive statistics of the dataset.
+```{r stats, h}
+summary(df$`2020 JCI`)
 ```
 
-
-```{r}
-jcr_cor <- df[,c('Journal name', 'ISSN', 'eISSN','2020 JIF', '2020 JCI', '5 Year JIF', 'Immediacy Index', 'Eigenfactor', 'Total Citations', 'Article Influence Score')]
-jcr_cor <- unique(jcr_cor)
-
-jcr_corp <- cor.mtest(jcr_cor[,4:10], conf.level = 0.995)
-jcr_cor <- cor(jcr_cor[,4:10], method = 'pearson', use='complete.obs')
-
-corrplot(jcr_cor, p.mat = jcr_corp$p, insig ='blank', method = 'square', order = 'FPC', type = 'lower', tl.col='black', tl.srt=45,  addCoef.col='black', diag = TRUE, col=viridis::viridis(100))
+# 1. Distribution analysis
+Gini Index is calculated for each JCR indicator.
+```{r gini}
+gini(df$`2020 JIF`[which(!is.na(df$`2020 JIF`))])
+gini(df$`2020 JCI`[which(!is.na(df$`2020 JCI`))])
+gini(df$`5 Year JIF` [which(!is.na(df$`5 Year JIF`))])
+gini(df$`Immediacy Index`[which(!is.na(df$`Immediacy Index`))])
+gini(df$`Eigenfactor`[which(!is.na(df$`Eigenfactor`))])
+gini(df$`Total Citations`[which(!is.na(df$`Total Citations`))])
+gini(df$`Article Influence Score`[which(!is.na(df$`Article Influence Score`))])
 ```
 
-
-
-```{r cor, dpi = 100, fig.retina = 2,  fig.height = 7, fig.width=6}
-summary(df)
-
-jif_jci <- biblio_cor(df, '2020 JIF', '2020 JCI')
-jif_jci$Sign <- jif_jci$p<0.01
-jif_jci <- jif_jci[which(!is.na(jif_jci$Correlation)),]
-jif_jci <- jif_jci[which(jif_jci$Journals>25),]
-
-
-ggplot2::ggplot(data=jif_jci[which(!is.na(jif_jci$Correlation)),], aes(x='', y=Journals))+
-  geom_boxplot(outlier.shape = NA, width = 0.8) +
-  geom_jitter()+
-  geom_hline(yintercept =  25)+
-  scale_color_viridis()+
-  theme_minimal()
-
-
-ggpairs(df[which(df$Category=='ECONOMICS - SSCI'),c(5,6,8,10:14)])
-
-
-jif_jci <- jif_jci[which(jif_jci$Journals>25),]
-cor.mtest(df[1:10, c('2020 JIF','2020 JCI')])
-```
-
-
-
-```{r cor, dpi = 200, fig.retina = 2,  fig.height = 4, fig.width=3.5}
-summary(df)
-
-esi_categories <- read.csv2('data/final_map.csv', stringsAsFactors = FALSE)
-esi_categories$WC <- toupper(esi_categories$WC)
-
-df_cor <- data.frame()
-for(x in c('2020 JIF', '5 Year JIF', 'Immediacy Index', 'Eigenfactor', 'Total Citations', 'Article Influence Score')){
-  aux <-biblio_cor(df, x, '2020 JCI')
-  aux$Indicator <- x
-  df_cor <- rbind.data.frame(df_cor, aux, stringsAsFactors = FALSE)
-}
-esi_categories[which(esi_categories$WC == "WOMEN'S STUDIES"),'WC'] <- 'WOMENS STUDIES'
-df_cor <- df_cor[which(!(is.na(df_cor$Cat))),]
-
-all(df_cor$Cat %in% esi_categories$WC)
-
-df_cor <- dplyr::inner_join(df_cor, esi_categories[,c('WC', 'ESI')], by=c('Cat'='WC'))
-write.table(df_cor, 'data/correlations_esi.tsv', sep='\t', row.names = FALSE)
-
-df_cor <- df_cor[which(!is.na(df_cor$Correlation)),]
-df_cor <- df_cor[which(df_cor$Journals>25),]
-
-ggplot2::ggplot(data=df_cor, aes(y=Correlation, x=DB, group=DB))+
-  geom_boxplot(outlier.shape = NA, width = 0.8) +
-  geom_jitter(aes(color=Correlation), stroke=0, alpha=.7)+
-  scale_color_viridis()+
-  theme_light()+
-  theme(panel.grid.major.x = element_blank())+
-  facet_wrap(~Indicator)
-
-ggpairs(df[which(df$Category=='ECONOMICS - SSCI'),c(5,6,8,10:14)])
-```
-
-
-```{r correlation_plots, dpi = 200, fig.retina = 2,  fig.height = 2, fig.width=3}
-df_cor <- data.frame()
-for(x in c('2020 JIF', '5 Year JIF', 'Immediacy Index', 'Eigenfactor', 'Total Citations', 'Article Influence Score')){
-  aux <-biblio_cor(df, x, '2020 JCI')
-  aux$Indicator <- x
-  df_cor <- rbind.data.frame(df_cor, aux, stringsAsFactors = FALSE)
-}
-
-df_cor <- df_cor[which(!is.na(df_cor$Correlation)),]
-df_cor <- df_cor[which(df_cor$Journals>25),]
-
-```
-
-```{r , dpi = 200, fig.retina = 2,  fig.height = 2.5, fig.width=3.5}
-
-jci_jif <- df_cor[which((df_cor$Indicator %in% c('2020 JIF', '5 Year JIF')) & (df_cor$DB %in% c('SSCI', 'SCIE'))),]
-
-jci_jif[which(jci_jif$DB == 'SSCI'),'DB'] <- 'JCR - Social Science ed.'
-jci_jif[which(jci_jif$DB == 'SCIE'),'DB'] <- 'JCR - Science ed.'
-
-jci_jif[which(jci_jif$Indicator == '2020 JIF'),'Indicator'] <- 'Journal Impact Factor'
-jci_jif[which(jci_jif$Indicator == '5 Year JIF'),'Indicator'] <- '5 Year Journal Impact Factor'
-
-ggplot2::ggplot(data=jci_jif, aes(y=Correlation, x=DB, group=DB))+
-  geom_boxplot(outlier.shape = NA, width = 0.8) +
-  geom_jitter(aes(fill=Correlation, size=Docs), shape=21, color='black', stroke=.5, alpha=.6)+
-  scale_fill_gradient(low = 'white', high = '#eb2701', na.value = NA)+
-  #scale_color_viridis()+
-  scale_size_continuous(range = c(1,5), breaks = c(0, 25000,50000, 100000, 125000, 150000, 200000))+
-  theme_light()+
-  theme(panel.grid.major.x = element_blank())+
-  theme(panel.grid = element_blank(),
-        text=element_text(family='Arial', size=12.5, color='black'),
-        axis.text = element_text(color='black', size=11),
-        axis.ticks = element_line(color='black'),
-        legend.position="bottom",
-        panel.border = element_rect(colour = "black"),
-        strip.background = element_rect(colour="black",
-                                        fill="black"),
-        strip.text = element_text(size=14) )+
-  guides(fill = guide_colorbar( label.position = "bottom",
-                               title.position = "left", title.vjust = 0.85)) +
-  labs(x='')+
-  facet_wrap(~Indicator)
-```
-```{r , dpi = 200, fig.retina = 2,  fig.height = 3, fig.width=3.5}
-ot_indicators <- df_cor[which(!(df_cor$Indicator %in% c('2020 JIF', '5 Year JIF'))),]
-
-ot_indicators[which(ot_indicators$DB == 'SSCI'),'DB'] <- 'Social\nScience ed.'
-ot_indicators[which(ot_indicators$DB == 'SCIE'),'DB'] <- 'Science ed.'
-ot_indicators[which(ot_indicators$DB == 'AHCI'),'DB'] <- 'Arts &\nHumanities ed.'
-ot_indicators[which(ot_indicators$DB == 'ESCI'),'DB'] <- 'Emerging\nSources'
-
-ggplot2::ggplot(data=ot_indicators, aes(y=Correlation, x=DB, group=DB))+
-  geom_boxplot(outlier.shape = NA, width = 0.8) +
-  geom_jitter(aes(fill=Correlation, size=Docs), shape=21, color='black', stroke=.5, alpha=.6)+
-  scale_fill_gradient(low = 'white', high = '#eb2701', na.value = NA)+
-  scale_size_continuous(range = c(0.1,3.5), breaks = c(0, 25000,50000, 100000, 125000, 150000, 200000))+
-  theme_light()+
-  theme(panel.grid.major.x = element_blank())+
-  theme(panel.grid = element_blank(),
-        text=element_text(family='Arial', size=12.5, color='black'),
-        axis.text = element_text(color='black', size=10.5),
-        axis.ticks = element_line(color='black'),
-        legend.position="bottom",
-        panel.border = element_rect(colour = "black"),
-        strip.background = element_rect(colour="black",
-                                        fill="black"),
-        strip.text = element_text(size=14))+
-  guides(fill = guide_colorbar( label.position = "bottom",
-                               title.position = "left", title.vjust = 0.85)) +
-  labs(x='')+
-  facet_wrap(~Indicator)
-```
-
-
-```{r}
-
-df_den <- data.frame()
-
-for(x in c('2020 JIF', '5 Year JIF', 'Immediacy Index', 'Eigenfactor', 'Total Citations', 'Article Influence Score')){
-  aux <-df[,c('Category','Cat','DB',x)]
-  names(aux)[4] <- 'Value'
-  aux$Indicator <- x
-  df_den <- rbind.data.frame(df_den, aux, stringsAsFactors = FALSE)
-}
-
-
-
-ggplot2::ggplot(data=df_den[which(df_den$DB == 'SSCI'),], aes(x=Value, fill=Indicator))+
-  geom_histogram(bins=10)+
-  theme_light()+
-  facet_wrap(~Indicator, scales = 'free')+
-  theme(legend.position = 'none')
-
-ggplot2::ggplot(data=df_den[which(df_den$DB == 'SSCI'),], aes(x=Value, fill=Indicator))+
-  geom_density(color=NA)+
-  theme_light()+
-  facet_wrap(~Indicator, scales = 'free')+
-  theme(legend.position = 'none')
-
-qqnorm(as.numeric(df_den[which(df_den$DB == 'SSCI' & df_den$Indicator == '2020 JIF'),]$Value))
-
-```
-
-```{r}
-library(dplyr)
-top_jci_jif <- df_cor[which((df_cor$Indicator == c('2020 JIF')) & (df_cor$DB %in% c('SSCI', 'SCIE'))),]
-
-top_jci_jif <- top_jci_jif  %>% 
-  arrange(desc(Correlation)) %>% 
-  group_by(DB) %>% slice(1:10)
-
-
-top_jci_jif <- as.data.frame(top_jci_jif)
-top_jci_jif$n <- 1:20
-top_jci_jif[which(top_jci_jif$DB=='SCIE'),'Cat'] <- paste(' ', top_jci_jif[which(top_jci_jif$DB=='SCIE'),'Cat'])
-
-top_jci_jif <- top_jci_jif %>% 
-  arrange(DB, Correlation) %>%
-  mutate(Cat = factor(Cat, levels = Cat))
-
-ggplot(top_jci_jif, aes(x = Cat, y = Correlation)) +
-  geom_segment(
-    aes(x = Cat, xend = Cat, y = 0.9, yend = Correlation), 
-    color = "black"
-    ) + 
-  geom_point(aes(color = DB), size = 4) +
-  scale_color_viridis_d() +
-  theme_pubclean() +
-  coord_flip() +
-  rotate_x_text(45)
-
-```
-
-
-```{r GINI, dpi = 200, fig.retina = 2,  fig.height = 5, fig.width=9}
-library(descr)
-x <- as.numeric(df_den[which(df_den$DB == 'SSCI' & df_den$Indicator == '2020 JIF'),]$Value)
-tab = as.data.frame(freq(ordered(x), plot = FALSE))
-CumFreq = cumsum(tab[-dim(tab)[1],]$Frequency)
-tab$CumFreq = c(CumFreq, NA)
-tab
-
-
-df_den <- data.frame()
-
-for(x in c('2020 JIF', '5 Year JIF', 'Immediacy Index', 'Eigenfactor', 'Total Citations', 'Article Influence Score')){
-  aux <-df[,c('Category','Cat','DB',x)]
-  names(aux)[4] <- 'Value'
-  aux <- aux[which(!is.na(aux$Value)),]
-  
-  aux2 <- data.frame(lor=Lc(as.numeric(aux$Value))$p, stringsAsFactors = FALSE)
-  aux2$Indicator <- x
-  df_den <- rbind.data.frame(df_den, aux2, stringsAsFactors = FALSE)
-}
-
-ggplot(tab, aes(x=Frequency, y=`Cum Percent`))+
-  geom_line()
-
-library(ineq)
-plot(Lc(as.numeric(df_den[which(df_den$DB == 'SSCI' & df_den$Indicator == '2020 JIF'),]$Value)))
-
-
-
-
+A new `data.frame` is created to obtain the Lorenz curve in an easy way.
+```{r lorenz_df}
 df_den <- data.frame()
 
 for(x in c('2020 JCI','2020 JIF', '5 Year JIF', 'Immediacy Index', 'Eigenfactor', 'Total Citations', 'Article Influence Score')){
-  aux <-df[,c('Category','Cat','DB',x)]
-  names(aux)[4] <- 'Value'
+  aux <-df[,c('Cat','DB',x)]
+  names(aux)[3] <- 'Value'
   aux$Indicator <- x
   df_den <- rbind.data.frame(df_den, aux, stringsAsFactors = FALSE)
 }
 
+df_den[which(df_den$Indicator=='2020 JCI'),'Indicator'] <- 'Journal Citation Indicator'
+df_den[which(df_den$Indicator=='2020 JIF'),'Indicator'] <- 'Journal Impact Factor'
+df_den[which(df_den$Indicator=='5 Year JIF'),'Indicator']  <- '5-Year Journal Impact Factor'
+```
 
-library(gglorenz)
-
+The Lorenz curve is obtained.
+```{r lorenz_curve, dpi=100, fig.retina=2, fig.height=2.5, fig.width=4, warning=FALSE}
 ggplot(df_den, aes(x=Value, color=Indicator)) +
-    stat_lorenz(desc = FALSE, alpha=.7, size=1) +
-    #coord_fixed() +
-    geom_abline(size=1) +
-    theme_light() +
-  theme(panel.grid = element_blank(),
-        legend.position="bottom", legend.box = "horizontal")+
-  labs(y='Lorenz curve')
+  stat_lorenz(desc=FALSE, alpha=0.7, size=1) +
+  geom_abline(size=0.8) +
+  scale_color_manual(values=c('#fb0007','#129176', '#e5c421', '#f46f08', '#4cacd0', '#291b37', '#de8bb7'))+
+  theme_light() +
+  theme(panel.grid=element_blank(),
+        legend.title=element_blank(),
+        text=element_text(family='Arial', size=12.5, color='black'),
+        axis.text=element_text(color='black', size=12),
+        axis.ticks=element_line(color='black'),
+        legend.position='bottom',
+        panel.border=element_rect(colour='black'),
+        strip.background=element_rect(colour='black', fill='black'),
+        strip.text=element_text(size=14),
+        legend.text=element_text(size=10))+
+  guides(fill=guide_colorbar(label.position='bottom',
+                               title.position='left', title.vjust=0.85)) +
+  labs(y='Cummulative percentage of indicator', x='Cummulative percentage of journals')
+```
 
+# 2. Correlation analysis
+A new `data.frame` is created for obtaining a matrix of plots.
+```{r matrix_plot_df, dpi=100, fig.retina=2,  fig.height=5, fig.width=8.25}
+m_plot <- df[,c('2020 JCI', '2020 JIF', '5 Year JIF', 'Immediacy Index', 'Eigenfactor', 'Total Citations', 'Article Influence Score', 'DB')]
+names(m_plot)[c(1,2,7)] <- c('JCI', 'JIF', 'AIS')
+```
 
+The matrix of plots with the correlations and distribution of data is generated.
+```{r matrix_plot, dpi=200, fig.retina=2,  fig.height=5, fig.width=8.25, warning=FALSE, message=FALSE}
+ggpairs(m_plot, columns=1:7,
+        upper=list(continuous=wrap('cor', size=5)),
+        lower=list(continuous=wrap('points', alpha=0.6)))+
+  theme(text=element_text(family='Arial', size=12.5, color='black'),
+        axis.text=element_text(color='black', size=11),
+        axis.ticks=element_line(color='black'),
+        strip.background=element_rect(colour='black', fill='black'),
+        strip.text=element_text(size=12, color='white'),
+        legend.position='none'
+        ) 
+```
+
+Pearson correlations between the seven indicators are calculated.
+```{r correlation_plots, dpi = 200, fig.retina = 2,  fig.height = 2, fig.width=3, warning=FALSE}
+df_cor <- data.frame()
+for(x in c('2020 JIF', '5 Year JIF', 'Immediacy Index', 'Eigenfactor', 'Total Citations', 'Article Influence Score')){
+  aux <-biblio_cor(df, x, '2020 JCI')
+  aux$Indicator <- x
+  df_cor <- rbind.data.frame(df_cor, aux, stringsAsFactors = FALSE)
+}
+
+df_cor <- df_cor[which(!is.na(df_cor$Correlation)),]
+```
+
+ESI field are assigned to each Web of Science Category.
+```{r esi}
+esi <- read.csv2('data/final_map.csv', stringsAsFactors=FALSE)
+esi[which(esi$WC=="Women's Studies"), 'WC'] <- 'Womens Studies'
+esi$WC <- toupper(esi$WC)
+
+df_cor <- inner_join(df_cor, esi[,c('WC', 'ESI')], by=c('Cat'='WC'))
+```
+
+## 2.1. JIF and 5-Year JIF
+Firstly, correlations between JCI and JIF and 5-Year JIF are calculated.
+```{r correlations, dpi = 200, fig.retina=2,  fig.height=2, fig.width=3.5, warning=FALSE}
+jci_jif <- df_cor[which((df_cor$Indicator %in% c('2020 JIF', '5 Year JIF')) & (df_cor$DB %in% c('SSCI', 'SCIE'))),]
+
+jci_jif[which(jci_jif$DB=='SSCI'),'DB'] <- 'Social Sciences'
+jci_jif[which(jci_jif$DB=='SCIE'),'DB'] <- 'Science'
+
+jci_jif[which(jci_jif$Indicator=='2020 JIF'),'Indicator'] <- 'Journal Impact Factor'
+jci_jif[which(jci_jif$Indicator=='5 Year JIF'),'Indicator'] <- '5-Year Journal Impact Factor'
+
+jci_jif$Indicator <- factor(jci_jif$Indicator, levels=c('Journal Impact Factor', '5-Year Journal Impact Factor'), ordered=TRUE)
+```
+
+Boxplot with correlations greater than 0.5 is generated.
+```{r jci_jif_05, dpi = 200, fig.retina=2,  fig.height=2, fig.width=3.5, warning=FALSE, message=FALSE}
+ggplot(data=jci_jif, aes(y=Correlation, x=DB, group=DB))+
+  geom_boxplot(outlier.shape=NA, width=0.8) +
+  geom_jitter(data=jci_jif[which(jci_jif$Indicator=='Journal Impact Factor'),], aes(fill=Correlation, size=Docs), shape=21, color='black', stroke=0.5, alpha=0.6)+
+  scale_fill_gradient(low='white', high='#eb2701', na.value=NA, breaks=c(0.5, 0.75, 1), limits=c(0.5,1))+
+  new_scale_fill()+
+  geom_jitter(data=jci_jif[which(jci_jif$Indicator=='5-Year Journal Impact Factor'),], aes(fill=Correlation, size=Docs), shape=21, color='black', stroke=0.5, alpha=0.6)+
+  scale_fill_gradient(low='white', high='blue', na.value=NA, breaks=c(0.5, 0.75, 1), limits=c(0.5,1))+
+  ylim(c(0.5,1))+
+  scale_size_continuous(range=c(1,5), breaks=c(0, 25000,50000, 100000, 125000, 150000, 200000))+
+  theme_light()+
+  theme(panel.grid=element_blank(),
+        text=element_text(family='Arial', size=12.5, color='black'),
+        axis.text=element_text(color='black', size=11),
+        axis.ticks=element_line(color='black'),
+        legend.position='none',
+        legend.box='vertical',
+        panel.border=element_rect(colour='black'),
+        strip.background=element_rect(colour='black', fill='black'),
+        strip.text = element_text(size=14))+
+  guides(fill=guide_colorbar(label.position='bottom',
+                             title.position='left', title.vjust=0.85)) +
+  labs(x='')+
+  facet_wrap(~Indicator)
+```
+
+The complete boxplot does not vary much, only 7 more categories are included.
+```{r jci_jif, dpi = 200, fig.retina=2,  fig.height=2, fig.width=3.5, warning=FALSE, message=FALSE}
+ggplot(data=jci_jif, aes(y=Correlation, x=DB, group=DB))+
+  geom_boxplot(outlier.shape=NA, width=0.8) +
+  geom_jitter(data=jci_jif[which(jci_jif$Indicator=='Journal Impact Factor'),], aes(fill=Correlation, size=Docs), shape=21, color='black', stroke=0.5, alpha=0.6)+
+  scale_fill_gradient(low='white', high='#eb2701', na.value=NA, breaks=c(0.5, 0.75, 1), limits=c(0.5,1))+
+  new_scale_fill()+
+  geom_jitter(data=jci_jif[which(jci_jif$Indicator=='5-Year Journal Impact Factor'),], aes(fill=Correlation, size=Docs), shape=21, color='black', stroke=0.5, alpha=0.6)+
+  scale_fill_gradient(low='white', high='blue', na.value=NA, breaks=c(0, 0.5, 1), limits=c(0,1))+
+  scale_size_continuous(range=c(1,5), breaks=c(0, 25000,50000, 100000, 125000, 150000, 200000))+
+  theme_light()+
+  theme(panel.grid=element_blank(),
+        text=element_text(family='Arial', size=12.5, color='black'),
+        axis.text=element_text(color='black', size=11),
+        axis.ticks=element_line(color='black'),
+        legend.position='none',
+        legend.box='vertical',
+        panel.border=element_rect(colour='black'),
+        strip.background=element_rect(colour='black', fill='black'),
+        strip.text = element_text(size=14))+
+  guides(fill=guide_colorbar(label.position='bottom',
+                             title.position='left', title.vjust=0.85)) +
+  labs(x='')+
+  facet_wrap(~Indicator)
+```
+
+## 2.2. AIS, Eigenfactor, Immediacy Index and Total Citations
+The correlations between the JCI and the rest of the indicators are calculated, but taking into account only those categories with more than 25 journals. This is because a few small categories greatly alter the results.
+```{r other_correlations_df}
+ot_indicators <- df_cor[which((!(df_cor$Indicator %in% c('2020 JIF', '5 Year JIF'))) & df_cor$Journals>25),]
+
+ot_indicators[which(ot_indicators$DB=='SSCI'),'DB'] <- 'Social\nSciences'
+ot_indicators[which(ot_indicators$DB=='SCIE'),'DB'] <- 'Science'
+ot_indicators[which(ot_indicators$DB=='AHCI'),'DB'] <- 'Arts &\nHumanities'
+ot_indicators[which(ot_indicators$DB=='ESCI'),'DB'] <- 'Emerging\nSources'
+```
+
+Boxplots are generated.
+```{r other_correlations, dpi=200, fig.retina=2,  fig.height=3.5, fig.width=4.5, message=FALSE}
+ggplot(data=ot_indicators, aes(y=Correlation, x=DB, group=DB))+
+  geom_boxplot(outlier.shape=NA, width=0.8) +
+  geom_jitter(aes(fill=Correlation, size=Docs), shape=21, color='black', stroke=0.5, alpha=0.6)+
+  scale_fill_gradient(low='white', high='#eb2701', na.value=NA, breaks=c(0, 0.5, 1), limits=c(0,1))+
+  scale_size_continuous(range=c(0.1,3.5), breaks=c(0, 25000,50000, 100000, 125000, 150000, 200000))+
+  theme_light()+
+  theme(panel.grid=element_blank(),
+        text=element_text(family='Arial', size=12.5, color='black'),
+        axis.text=element_text(color='black', size=10.5),
+        axis.ticks=element_line(color='black'),
+        legend.position='bottom',
+        panel.border=element_rect(colour='black'),
+        strip.background=element_rect(colour='black', fill='black'),
+        strip.text=element_text(size=14))+
+  guides(fill = guide_colorbar(label.position='bottom',
+                               title.position='left', title.vjust=0.85)) +
+  labs(x='')+
+  facet_wrap(~Indicator)
 ```
