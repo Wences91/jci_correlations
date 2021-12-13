@@ -1,14 +1,14 @@
 ---
 title: 'Is there a need for a new journal metric? Correlations between JCR Impact Factor
   metrics and the Journal Citation Indicator - JCI'
-author: 'Wenceslao Arroyo-Machado'
-date: '12 December, 2021'
+author: 'Daniel Torres-Salinas, Pilar Valderrama-Baca, Wenceslao Arroyo-Machado'
+date: '13 December, 2021'
 output:
-  html_notebook:
+  html_document:
     toc: yes
 ---
 
-This is the [R Markdown](http://rmarkdown.rstudio.com) Notebook created for the JCI analysis.
+This is the [R Markdown](http://rmarkdown.rstudio.com) Notebook created for the JCI analysis. Notebook and data are available at [GitHub](https://github.com/Wences91/jci_correlations).
 ```{r packages, warning=FALSE, message=FALSE}
 source('functions.R')
 library(reldist)
@@ -61,7 +61,7 @@ df_den[which(df_den$Indicator=='5 Year JIF'),'Indicator']  <- '5-Year Journal Im
 ```
 
 The Lorenz curve is obtained.
-```{r lorenz_curve, dpi=100, fig.retina=2, fig.height=2.5, fig.width=4, warning=FALSE}
+```{r lorenz_curve, dpi=100, fig.retina=2, fig.height=5, fig.width=9, warning=FALSE}
 ggplot(df_den, aes(x=Value, color=Indicator)) +
   stat_lorenz(desc=FALSE, alpha=0.7, size=1) +
   geom_abline(size=0.8) +
@@ -84,13 +84,13 @@ ggplot(df_den, aes(x=Value, color=Indicator)) +
 
 # 2. Correlation analysis
 A new `data.frame` is created for obtaining a matrix of plots.
-```{r matrix_plot_df, dpi=100, fig.retina=2,  fig.height=5, fig.width=8.25}
+```{r matrix_plot_df}
 m_plot <- df[,c('2020 JCI', '2020 JIF', '5 Year JIF', 'Immediacy Index', 'Eigenfactor', 'Total Citations', 'Article Influence Score', 'DB')]
 names(m_plot)[c(1,2,7)] <- c('JCI', 'JIF', 'AIS')
 ```
 
 The matrix of plots with the correlations and distribution of data is generated.
-```{r matrix_plot, dpi=200, fig.retina=2,  fig.height=5, fig.width=8.25, warning=FALSE, message=FALSE}
+```{r matrix_plot, dpi=200, fig.retina=2,  fig.height=12, fig.width=18.25, warning=FALSE, message=FALSE}
 ggpairs(m_plot, columns=1:7,
         upper=list(continuous=wrap('cor', size=5)),
         lower=list(continuous=wrap('points', alpha=0.6)))+
@@ -104,7 +104,7 @@ ggpairs(m_plot, columns=1:7,
 ```
 
 Pearson correlations between the seven indicators are calculated.
-```{r correlation_plots, dpi = 200, fig.retina = 2,  fig.height = 2, fig.width=3, warning=FALSE}
+```{r correlation_plots, fig.width=3, warning=FALSE}
 df_cor <- data.frame()
 for(x in c('2020 JIF', '5 Year JIF', 'Immediacy Index', 'Eigenfactor', 'Total Citations', 'Article Influence Score')){
   aux <-biblio_cor(df, x, '2020 JCI')
@@ -126,7 +126,7 @@ df_cor <- inner_join(df_cor, esi[,c('WC', 'ESI')], by=c('Cat'='WC'))
 
 ## 2.1. JIF and 5-Year JIF
 Firstly, correlations between JCI and JIF and 5-Year JIF are calculated.
-```{r correlations, dpi = 200, fig.retina=2,  fig.height=2, fig.width=3.5, warning=FALSE}
+```{r correlations, warning=FALSE}
 jci_jif <- df_cor[which((df_cor$Indicator %in% c('2020 JIF', '5 Year JIF')) & (df_cor$DB %in% c('SSCI', 'SCIE'))),]
 
 jci_jif[which(jci_jif$DB=='SSCI'),'DB'] <- 'Social Sciences'
@@ -139,7 +139,7 @@ jci_jif$Indicator <- factor(jci_jif$Indicator, levels=c('Journal Impact Factor',
 ```
 
 Boxplot with correlations greater than 0.5 is generated.
-```{r jci_jif_05, dpi = 200, fig.retina=2,  fig.height=2, fig.width=3.5, warning=FALSE, message=FALSE}
+```{r jci_jif_05, dpi = 200, fig.retina=2, fig.height=5, fig.width=9, warning=FALSE, message=FALSE}
 ggplot(data=jci_jif, aes(y=Correlation, x=DB, group=DB))+
   geom_boxplot(outlier.shape=NA, width=0.8) +
   geom_jitter(data=jci_jif[which(jci_jif$Indicator=='Journal Impact Factor'),], aes(fill=Correlation, size=Docs), shape=21, color='black', stroke=0.5, alpha=0.6)+
@@ -166,7 +166,7 @@ ggplot(data=jci_jif, aes(y=Correlation, x=DB, group=DB))+
 ```
 
 The complete boxplot does not vary much, only 7 more categories are included.
-```{r jci_jif, dpi = 200, fig.retina=2,  fig.height=2, fig.width=3.5, warning=FALSE, message=FALSE}
+```{r jci_jif, dpi = 200, fig.retina=2, fig.height=5, fig.width=9, warning=FALSE, message=FALSE}
 ggplot(data=jci_jif, aes(y=Correlation, x=DB, group=DB))+
   geom_boxplot(outlier.shape=NA, width=0.8) +
   geom_jitter(data=jci_jif[which(jci_jif$Indicator=='Journal Impact Factor'),], aes(fill=Correlation, size=Docs), shape=21, color='black', stroke=0.5, alpha=0.6)+
@@ -203,7 +203,7 @@ ot_indicators[which(ot_indicators$DB=='ESCI'),'DB'] <- 'Emerging\nSources'
 ```
 
 Boxplots are generated.
-```{r other_correlations, dpi=200, fig.retina=2,  fig.height=3.5, fig.width=4.5, message=FALSE}
+```{r other_correlations, fig.height=7, fig.width=9, message=FALSE}
 ggplot(data=ot_indicators, aes(y=Correlation, x=DB, group=DB))+
   geom_boxplot(outlier.shape=NA, width=0.8) +
   geom_jitter(aes(fill=Correlation, size=Docs), shape=21, color='black', stroke=0.5, alpha=0.6)+
