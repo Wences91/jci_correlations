@@ -1,6 +1,6 @@
 # Is there a need for a new journal metric? Correlations between JCR Impact Factor metrics and the Journal Citation Indicator - JCI
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5776404.svg)](https://doi.org/10.5281/zenodo.5776404)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5776350.svg)](https://doi.org/10.5281/zenodo.5776350)
 [![Binder](http://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Wences91/jci_correlations/main?urlpath=rstudio)
 
 This repository includes all data processing for the work "*Is there a need for a new journal metric? Correlations between JCR Impact Factor metrics and the Journal Citation Indicator - JCI*".
