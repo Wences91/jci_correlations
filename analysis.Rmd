@@ -2,7 +2,7 @@
 title: 'Is there a need for a new journal metric? Correlations between JCR Impact Factor
   metrics and the Journal Citation Indicator - JCI'
 author: 'Daniel Torres-Salinas, Pilar Valderrama-Baca, Wenceslao Arroyo-Machado'
-date: '13 December, 2021'
+date: '10 April, 2022'
 output:
   html_document:
     toc: yes
@@ -89,10 +89,10 @@ m_plot <- df[,c('2020 JCI', '2020 JIF', '5 Year JIF', 'Immediacy Index', 'Eigenf
 names(m_plot)[c(1,2,7)] <- c('JCI', 'JIF', 'AIS')
 ```
 
-The matrix of plots with the correlations and distribution of data is generated.
-```{r matrix_plot, dpi=200, fig.retina=2,  fig.height=12, fig.width=18.25, warning=FALSE, message=FALSE}
+The matrix of plots with the correlations and distribution of data is generated. All of them are significant.
+```{r matrix_plot, dpi=200, fig.retina=2,  fig.height=9, fig.width=14, warning=FALSE, message=FALSE}
 ggpairs(m_plot, columns=1:7,
-        upper=list(continuous=wrap('cor', size=5)),
+        upper=list(continuous=wrap('cor', size=5, method='pearson')),
         lower=list(continuous=wrap('points', alpha=0.6)))+
   theme(text=element_text(family='Arial', size=12.5, color='black'),
         axis.text=element_text(color='black', size=11),
@@ -138,16 +138,28 @@ jci_jif[which(jci_jif$Indicator=='5 Year JIF'),'Indicator'] <- '5-Year Journal I
 jci_jif$Indicator <- factor(jci_jif$Indicator, levels=c('Journal Impact Factor', '5-Year Journal Impact Factor'), ordered=TRUE)
 ```
 
-Boxplot with correlations greater than 0.5 is generated.
-```{r jci_jif_05, dpi = 200, fig.retina=2, fig.height=5, fig.width=9, warning=FALSE, message=FALSE}
-ggplot(data=jci_jif, aes(y=Correlation, x=DB, group=DB))+
+There are 13 correlations with a `p-value` less than 0.01 (6 in JIF and 7 in 5-Year JIF).
+```{r cor_sign}
+dim(jci_jif[which(jci_jif$p > 0.001),])
+```
+
+
+```{r}
+mean(jci_jif[which(jci_jif$p < 0.001 & jci_jif$Indicator=='Journal Impact Factor'),'Correlation'])
+mean(jci_jif[which(jci_jif$p < 0.001 & jci_jif$Indicator=='Journal Impact Factor' & jci_jif$DB == 'Science'),'Correlation'])
+mean(jci_jif[which(jci_jif$p < 0.001 & jci_jif$Indicator=='Journal Impact Factor' & jci_jif$DB == 'Social Sciences'),'Correlation'])
+```
+
+Boxplot with correlations greater than 0.6 is generated.
+```{r jci_jif_05, dpi=200, fig.retina=2, fig.height=5, fig.width=9, warning=FALSE, message=FALSE}
+ggplot(data=jci_jif[which(jci_jif$p < 0.001),], aes(y=Correlation, x=DB, group=DB))+
   geom_boxplot(outlier.shape=NA, width=0.8) +
-  geom_jitter(data=jci_jif[which(jci_jif$Indicator=='Journal Impact Factor'),], aes(fill=Correlation, size=Docs), shape=21, color='black', stroke=0.5, alpha=0.6)+
-  scale_fill_gradient(low='white', high='#eb2701', na.value=NA, breaks=c(0.5, 0.75, 1), limits=c(0.5,1))+
+  geom_jitter(data=jci_jif[which(jci_jif$Indicator=='Journal Impact Factor' & jci_jif$p < 0.001),], aes(fill=Correlation, size=Docs), shape=21, color='black', stroke=0.5, alpha=0.6)+
+  scale_fill_gradient(low='white', high='#eb2701', na.value=NA, breaks=c(0.6, 0.8, 1), limits=c(0.6,1))+
   new_scale_fill()+
-  geom_jitter(data=jci_jif[which(jci_jif$Indicator=='5-Year Journal Impact Factor'),], aes(fill=Correlation, size=Docs), shape=21, color='black', stroke=0.5, alpha=0.6)+
-  scale_fill_gradient(low='white', high='blue', na.value=NA, breaks=c(0.5, 0.75, 1), limits=c(0.5,1))+
-  ylim(c(0.5,1))+
+  geom_jitter(data=jci_jif[which(jci_jif$Indicator=='5-Year Journal Impact Factor' & jci_jif$p < 0.001),], aes(fill=Correlation, size=Docs), shape=21, color='black', stroke=0.5, alpha=0.6)+
+  scale_fill_gradient(low='white', high='blue', na.value=NA, breaks=c(0.6, 0.8, 1), limits=c(0.6,1))+
+  ylim(c(0.6,1))+
   scale_size_continuous(range=c(1,5), breaks=c(0, 25000,50000, 100000, 125000, 150000, 200000))+
   theme_light()+
   theme(panel.grid=element_blank(),
@@ -161,7 +173,7 @@ ggplot(data=jci_jif, aes(y=Correlation, x=DB, group=DB))+
         strip.text = element_text(size=14))+
   guides(fill=guide_colorbar(label.position='bottom',
                              title.position='left', title.vjust=0.85)) +
-  labs(x='')+
+  labs(x='', y='Correlation with JCI')+
   facet_wrap(~Indicator)
 ```
 
@@ -202,6 +214,11 @@ ot_indicators[which(ot_indicators$DB=='AHCI'),'DB'] <- 'Arts &\nHumanities'
 ot_indicators[which(ot_indicators$DB=='ESCI'),'DB'] <- 'Emerging\nSources'
 ```
 
+There are 118 correlations with a p-value less than 0.01 (43 in Total Citations, 33 in Immediacy Index and Eigenfactor, and 9 in Article Influence Score).
+```{r cor_test}
+table(ot_indicators[which(ot_indicators$p >= 0.01),'Indicator'])
+```
+
 Boxplots are generated.
 ```{r other_correlations, fig.height=7, fig.width=9, message=FALSE}
 ggplot(data=ot_indicators, aes(y=Correlation, x=DB, group=DB))+
@@ -222,4 +239,125 @@ ggplot(data=ot_indicators, aes(y=Correlation, x=DB, group=DB))+
                                title.position='left', title.vjust=0.85)) +
   labs(x='')+
   facet_wrap(~Indicator)
+```
+
+# 3. Regression analysis
+Firstly, we rank JIF and JCI values by categories.
+```{r to_ranks}
+df_rank <- df[which(!(is.na(df$`2020 JIF`) | is.na(df$`2020 JCI`))),]
+
+length(unique(df_rank$Category))
+
+df_rank$quantile_jif <- NA
+df_rank$quantile_jci <- NA
+
+for(ca in unique(df$Category)){
+  df_rank[which(df_rank$Category==ca),'quantile_jif'] <- trunc(rank(-df_rank[which(df_rank$Category==ca),'2020 JIF'], ties.method = 'random'))
+  df_rank[which(df_rank$Category==ca),'quantile_jci'] <- trunc(rank(-df_rank[which(df_rank$Category==ca),'2020 JCI'], ties.method = 'random'))
+}
+```
+
+A linear regression model is generated with JIF and JCI ranks.
+```{r general_lm}
+lm_g <- lm(quantile_jif~quantile_jci, df_rank[which(df_rank$DB %in% c('SSCI', 'SCIE')),])
+summary(lm_g)
+```
+The models obtained for SSCI and SCIE journals have a good R^2^.
+```{r linear_models}
+lm_ssci <- lm(quantile_jif~quantile_jci, df_rank[which(df_rank$DB == 'SSCI'),])
+summary(lm_ssci)$r.squared
+
+lm_scie <- lm(quantile_jif~quantile_jci, df_rank[which(df_rank$DB == 'SCIE'),])
+summary(lm_scie)$r.squared
+```
+
+```{r linear_models_plot, dpi=200, fig.retina=2, fig.height=5, fig.width=9, warning=FALSE, message=FALSE}
+df_r2 <- data.frame(quantile_jci=c(Inf,Inf),
+                    quantile_jif=c(10,10),
+                    text=c(paste0('y==', format(coef(lm_ssci)[1], digits = 2), '+', format(coef(lm_ssci)[2], digits = 2), '~x~', '~~italic(r)^2==', round(summary(lm_ssci)$r.squared,3),''),
+                           paste0('y==', format(coef(lm_scie)[1], digits = 2), '+', format(coef(lm_scie)[2], digits = 2), '~x~', '~~italic(r)^2==', round(summary(lm_scie)$r.squared,3),'')),
+                    DB=c('SSCI','SCIE'))
+
+ggplot(data=df_rank[which(df_rank$DB %in% c('SSCI', 'SCIE')),], aes(x=quantile_jci, y=quantile_jif)) +
+  geom_point(color='#1f77b4', size=1, alpha=0.75, stroke=0)+
+  geom_smooth(formula = 'y ~ x', method='lm', color='black')+
+  geom_text(data=df_r2, aes(x=quantile_jci, y=quantile_jif, label=text, group=DB),
+            parse = TRUE, hjust=1.05) +
+  theme_light() +
+  labs(x='JCI rank', y='JIF rank') +
+  facet_wrap(.~DB, scales = 'free') +
+  theme(text=element_text(family='Arial', size=12.5, color='black'),
+        axis.text=element_text(color='black', size=11),
+        axis.ticks=element_line(color='black'),
+        panel.border=element_rect(color='black'),
+        strip.background=element_rect(color='black', fill='black'),
+        strip.text=element_text(size=12, color='white'),
+        legend.position='none'
+  ) 
+```
+
+The average R^2^ value of the linear regression models is calculated.
+```{r average_lm}
+df_r <- data.frame(category=unique(df_rank$Category[which(df_rank$DB %in% c('SSCI', 'SCIE'))]),
+                   r2=NA,
+                   DB=NA,
+                   stringsAsFactors = FALSE)
+
+for(ca in unique(df_r$category)){
+  lm_aux <- NA
+  lm_aux <-lm(quantile_jci~quantile_jif,df_rank[which(df_rank$Category==ca & !is.na(df_rank$`2020 JIF`) & !is.na(df_rank$`2020 JCI`)),])
+  df_r[which(df_r$category==ca),'r2'] <- summary(lm_aux)$r.squared
+  df_r[which(df_r$category==ca),'DB'] <- unique(df_rank[which(df_rank$Category==ca),'DB'])
+}
+
+mean(df_r$r2, na.rm = TRUE)
+mean(df_r$r2[which(df_r$DB=='SSCI')], na.rm = TRUE)
+mean(df_r$r2[which(df_r$DB=='SCIE')], na.rm = TRUE)
+```
+
+## 3.1 Information Science & Library Science model
+As specific study case, the linear regression model for Information Science & Library Science is generated.
+```{r}
+df_lib <- df[which(df$Cat == 'INFORMATION SCIENCE & LIBRARY SCIENCE'),]
+df_lib_train <- df_lib[which(!(is.na(df_lib$`2020 JIF`) | is.na(df_lib$`2020 JCI`))),]
+
+df_lib_train$quantile_jif <- trunc(rank(-df_lib_train[,'2020 JIF'], ties.method = 'first'))
+df_lib_train$quantile_jci <- trunc(rank(-df_lib_train[,'2020 JCI'], ties.method = 'first'))
+
+lib_lm <- lm(quantile_jif~quantile_jci, df_lib_train)
+```
+
+JIF ranking is predicted and compared to the original JIF ranking.
+```{r prediction, dpi=200, fig.retina=2, fig.height=5, fig.width=9, warning=FALSE, message=FALSE}
+df_lib_predict <- df_lib[which(!(is.na(df_lib$`2020 JCI`))),]
+df_lib_predict$quantile_jci <- trunc(rank(-df_lib_predict[,'2020 JCI'], ties.method = 'first'))
+df_lib_predict$quantile_jif <- trunc(rank(-df_lib_predict[,'2020 JIF'], ties.method = 'first'))
+df_lib_predict$quantile_jif[which(is.na(df_lib_predict$`2020 JIF`))] <- NA
+
+df_lib_predict$quantile_jci_p <- predict(lib_lm, newdata = df_lib_predict)
+df_lib_predict$quantile_jci_p <- rank(as.numeric(df_lib_predict$quantile_jci_p), ties.method = 'random')
+
+ggplot() +
+  geom_point(data=df_lib_predict, aes(x='JIF', y=quantile_jif, color=DB), alpha=0.7) +
+  geom_point(data=df_lib_predict, aes(x='Predicted JIF', y=quantile_jci_p, color=DB), alpha=0.7) +
+  geom_segment(data =df_lib_predict, aes(x = 'Predicted JIF', xend = 'JIF', y = quantile_jci_p, yend = quantile_jif),
+               inherit.aes = FALSE,
+               color='grey20',
+               size=0.25) +
+  geom_text(aes(y=c(1,dim(df_lib_predict)[1]/4, 2*dim(df_lib_predict)[1]/4, 3*dim(df_lib_predict)[1]/4),
+                x=Inf,
+                label=c('Q1','Q2','Q3','Q4')),
+            hjust=1.2, vjust=1)+
+  scale_color_manual(values=c('#fc4e08', '#28b7c1'), labels = c('ESCI journals', 'SSCI journals'))+
+  geom_hline(yintercept = c(dim(df_lib_predict)[1]/4, 2*dim(df_lib_predict)[1]/4, 3*dim(df_lib_predict)[1]/4), size=0.25)+
+  coord_flip()+
+  scale_x_discrete(limits=rev)+
+  scale_y_continuous(trans = "reverse", breaks = c(1,50,100,150)) +
+  labs(title = '', y='Ranking position', x='')+
+  theme_classic()+
+  theme(text=element_text(family='Arial', size=12.5, color='black'),
+        axis.text=element_text(color='black', size=11),
+        axis.ticks=element_line(color='black'),
+        legend.position = 'bottom',
+        legend.title = element_blank())
 ```
